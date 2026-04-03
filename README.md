@@ -19,6 +19,7 @@
 ## 触れる
 
 ブラウザで `katsushika_wave_emergence.html` を開く。それだけでいい。
+こちらでも見ることができる。[GitHub Pages](https://eijwat.github.io/Code-Art_katsushika_wave_emergence/)
 
 三つの呼吸がある。
 
