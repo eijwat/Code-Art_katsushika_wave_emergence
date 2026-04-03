@@ -1,0 +1,114 @@
+
+<div style="padding: 1rem 0;">
+<canvas id="c" style="width: 100%; border-radius: var(--border-radius-lg); display: block;"></canvas>
+<div style="display: flex; gap: 12px; margin-top: 1rem; flex-wrap: wrap;">
+<button onclick="resetCanvas()" style="font-size: 13px;">Rebirth</button>
+<label style="font-size: 13px; color: var(--color-text-secondary); display: flex; align-items: center; gap: 8px;">
+Breath <input type="range" min="0.2" max="3" step="0.1" value="1" id="speed" style="width: 100px;">
+</label>
+<label style="font-size: 13px; color: var(--color-text-secondary); display: flex; align-items: center; gap: 8px;">
+Memory <input type="range" min="0.85" max="0.99" step="0.01" value="0.95" id="fade" style="width: 100px;">
+</label>
+</div>
+</div>
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+const dpr = window.devicePixelRatio || 1;
+let W, H, particles, t, raf;
+
+const palette = [
+  [4, 44, 83],    // deep indigo blue
+  [15, 110, 86],  // ocean teal
+  [31, 158, 117], // sea green
+  [55, 138, 221], // sky blue
+  [239, 159, 39], // golden amber
+  [250, 238, 218],// foam white
+  [8, 80, 65],    // deep sea
+  [113, 43, 19],  // driftwood
+];
+
+function sz() {
+  const r = canvas.getBoundingClientRect();
+  W = r.width; H = Math.min(W * 0.618, 500);
+  canvas.width = W * dpr; canvas.height = H * dpr;
+  canvas.style.height = H + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+
+class Particle {
+  constructor() { this.reset(); }
+  reset() {
+    this.x = Math.random() * W;
+    this.y = Math.random() * H;
+    this.vx = 0; this.vy = 0;
+    this.life = 0;
+    this.maxLife = 200 + Math.random() * 600;
+    const ci = Math.floor(Math.random() * palette.length);
+    this.color = palette[ci];
+    this.size = 0.5 + Math.random() * 2.5;
+    this.phase = Math.random() * Math.PI * 2;
+  }
+  update(dt) {
+    const sp = parseFloat(document.getElementById('speed').value);
+    const nx = this.x / W; const ny = this.y / H;
+    const wave1 = Math.sin(nx * 6.28 + t * 0.7 * sp + this.phase) * 0.8;
+    const wave2 = Math.cos(ny * 4.2 - t * 0.5 * sp) * 0.6;
+    const wave3 = Math.sin((nx + ny) * 8 + t * 0.3 * sp) * 0.4;
+    const curl = Math.sin(nx * ny * 20 + t * 0.2 * sp) * 0.3;
+    const bigWave = Math.sin(nx * 2 - t * 0.15 * sp) * (1 - ny) * 3;
+    const fx = wave1 + wave3 * 0.5 + curl + bigWave * 0.3;
+    const fy = wave2 - wave3 * 0.3 - Math.abs(bigWave) * 0.5 + (0.3 - ny) * 0.4;
+    this.vx += fx * 0.15; this.vy += fy * 0.15;
+    this.vx *= 0.92; this.vy *= 0.92;
+    this.x += this.vx * dt; this.y += this.vy * dt;
+    this.life += dt;
+    if (this.life > this.maxLife || this.x < -20 || this.x > W + 20 || this.y < -20 || this.y > H + 20) {
+      this.reset();
+    }
+  }
+  draw() {
+    const age = this.life / this.maxLife;
+    const alpha = age < 0.1 ? age / 0.1 : age > 0.8 ? (1 - age) / 0.2 : 1;
+    const breathe = 0.7 + 0.3 * Math.sin(this.life * 0.02 + this.phase);
+    const a = Math.min(1, alpha * breathe * 0.85);
+    const [r, g, b] = this.color;
+    ctx.fillStyle = `rgba(${r},${g},${b},${a})`;
+    const s = this.size * (0.8 + 0.4 * Math.sin(age * Math.PI));
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, s, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+function resetCanvas() {
+  t = 0;
+  particles = [];
+  for (let i = 0; i < 2000; i++) particles.push(new Particle());
+  ctx.clearRect(0, 0, W, H);
+}
+
+function loop() {
+  const fade = parseFloat(document.getElementById('fade').value);
+  ctx.fillStyle = `rgba(10, 14, 20, ${1 - fade})`;
+  ctx.fillRect(0, 0, W, H);
+  const dt = 1;
+  t += 0.016;
+  for (const p of particles) { p.update(dt); p.draw(); }
+  // occasional bright foam
+  if (Math.random() < 0.02) {
+    const fx = Math.random() * W;
+    const fy = Math.random() * H * 0.4;
+    ctx.fillStyle = 'rgba(250,238,218,0.6)';
+    ctx.beginPath();
+    ctx.arc(fx, fy, 1 + Math.random() * 2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  raf = requestAnimationFrame(loop);
+}
+
+sz();
+window.addEventListener('resize', () => { sz(); resetCanvas(); });
+resetCanvas();
+loop();
+</script>

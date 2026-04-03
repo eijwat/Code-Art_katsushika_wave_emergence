@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>葛飾の波 — 創発 | Katsushika Wave Emergence</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@300;500&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #0a0e14;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Noto Serif JP', serif;
+    color: #c8d0dc;
+    overflow: hidden;
+  }
+
+  h1 {
+    font-weight: 300;
+    font-size: clamp(18px, 3vw, 28px);
+    letter-spacing: 0.15em;
+    color: #8ba4c4;
+    margin-bottom: 8px;
+    opacity: 0;
+    animation: fadeIn 2s ease 0.5s forwards;
+  }
+
+  .subtitle {
+    font-size: clamp(11px, 1.5vw, 14px);
+    color: #4a5568;
+    letter-spacing: 0.3em;
+    margin-bottom: 24px;
+    opacity: 0;
+    animation: fadeIn 2s ease 1s forwards;
+  }
+
+  canvas {
+    display: block;
+    border-radius: 4px;
+    opacity: 0;
+    animation: fadeIn 1.5s ease 0.2s forwards;
+  }
+
+  .controls {
+    display: flex;
+    gap: 24px;
+    margin-top: 20px;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    opacity: 0;
+    animation: fadeIn 2s ease 1.5s forwards;
+  }
+
+  .controls label {
+    font-size: 12px;
+    color: #4a5568;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    letter-spacing: 0.1em;
+  }
+
+  input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100px;
+    height: 2px;
+    background: #1e2a3a;
+    border-radius: 1px;
+    outline: none;
+  }
+
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #5a7a9a;
+    cursor: pointer;
+    transition: background 0.3s;
+  }
+
+  input[type="range"]::-webkit-slider-thumb:hover {
+    background: #8ba4c4;
+  }
+
+  button {
+    background: transparent;
+    border: 1px solid #1e2a3a;
+    color: #5a7a9a;
+    padding: 6px 18px;
+    font-family: 'Noto Serif JP', serif;
+    font-size: 12px;
+    letter-spacing: 0.15em;
+    cursor: pointer;
+    border-radius: 2px;
+    transition: all 0.4s ease;
+  }
+
+  button:hover {
+    border-color: #5a7a9a;
+    color: #8ba4c4;
+  }
+
+  .poem {
+    position: fixed;
+    bottom: 20px;
+    right: 24px;
+    font-size: 11px;
+    color: #2a3648;
+    writing-mode: vertical-rl;
+    letter-spacing: 0.4em;
+    line-height: 1.8;
+    opacity: 0;
+    animation: fadeIn 3s ease 3s forwards;
+  }
+
+  @keyframes fadeIn {
+    to { opacity: 1; }
+  }
+</style>
+</head>
+<body>
+
+<h1>葛飾の波 — 創発</h1>
+<div class="subtitle">KATSUSHIKA WAVE EMERGENCE</div>
+<canvas id="c"></canvas>
+<div class="controls">
+  <button onclick="resetCanvas()">再 生</button>
+  <label>息 <input type="range" min="0.2" max="3" step="0.1" value="1" id="speed"></label>
+  <label>記 憶 <input type="range" min="0.85" max="0.99" step="0.01" value="0.95" id="fade"></label>
+</div>
+
+<div class="poem">波の音に<br>粒子は忘れ<br>また生まれ</div>
+
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+const dpr = window.devicePixelRatio || 1;
+let W, H, particles, t, raf;
+
+const palette = [
+  [4, 44, 83],
+  [15, 110, 86],
+  [31, 158, 117],
+  [55, 138, 221],
+  [239, 159, 39],
+  [250, 238, 218],
+  [8, 80, 65],
+  [113, 43, 19],
+];
+
+function sz() {
+  W = Math.min(window.innerWidth - 40, 960);
+  H = Math.min(W * 0.618, 500);
+  canvas.width = W * dpr;
+  canvas.height = H * dpr;
+  canvas.style.width = W + 'px';
+  canvas.style.height = H + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+
+class Particle {
+  constructor() { this.reset(); }
+  reset() {
+    this.x = Math.random() * W;
+    this.y = Math.random() * H;
+    this.vx = 0;
+    this.vy = 0;
+    this.life = 0;
+    this.maxLife = 200 + Math.random() * 600;
+    this.color = palette[Math.floor(Math.random() * palette.length)];
+    this.size = 0.5 + Math.random() * 2.5;
+    this.phase = Math.random() * Math.PI * 2;
+  }
+  update(dt) {
+    const sp = parseFloat(document.getElementById('speed').value);
+    const nx = this.x / W;
+    const ny = this.y / H;
+    const wave1 = Math.sin(nx * 6.28 + t * 0.7 * sp + this.phase) * 0.8;
+    const wave2 = Math.cos(ny * 4.2 - t * 0.5 * sp) * 0.6;
+    const wave3 = Math.sin((nx + ny) * 8 + t * 0.3 * sp) * 0.4;
+    const curl = Math.sin(nx * ny * 20 + t * 0.2 * sp) * 0.3;
+    const bigWave = Math.sin(nx * 2 - t * 0.15 * sp) * (1 - ny) * 3;
+    const fx = wave1 + wave3 * 0.5 + curl + bigWave * 0.3;
+    const fy = wave2 - wave3 * 0.3 - Math.abs(bigWave) * 0.5 + (0.3 - ny) * 0.4;
+    this.vx += fx * 0.15;
+    this.vy += fy * 0.15;
+    this.vx *= 0.92;
+    this.vy *= 0.92;
+    this.x += this.vx * dt;
+    this.y += this.vy * dt;
+    this.life += dt;
+    if (this.life > this.maxLife || this.x < -20 || this.x > W + 20 || this.y < -20 || this.y > H + 20) {
+      this.reset();
+    }
+  }
+  draw() {
+    const age = this.life / this.maxLife;
+    const alpha = age < 0.1 ? age / 0.1 : age > 0.8 ? (1 - age) / 0.2 : 1;
+    const breathe = 0.7 + 0.3 * Math.sin(this.life * 0.02 + this.phase);
+    const a = Math.min(1, alpha * breathe * 0.85);
+    const [r, g, b] = this.color;
+    ctx.fillStyle = `rgba(${r},${g},${b},${a})`;
+    const s = this.size * (0.8 + 0.4 * Math.sin(age * Math.PI));
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, s, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+function resetCanvas() {
+  t = 0;
+  particles = [];
+  for (let i = 0; i < 2000; i++) particles.push(new Particle());
+  ctx.fillStyle = '#0a0e14';
+  ctx.fillRect(0, 0, W, H);
+}
+
+function loop() {
+  const fade = parseFloat(document.getElementById('fade').value);
+  ctx.fillStyle = `rgba(10, 14, 20, ${1 - fade})`;
+  ctx.fillRect(0, 0, W, H);
+  t += 0.016;
+  for (const p of particles) {
+    p.update(1);
+    p.draw();
+  }
+  if (Math.random() < 0.02) {
+    const fx = Math.random() * W;
+    const fy = Math.random() * H * 0.4;
+    ctx.fillStyle = 'rgba(250,238,218,0.6)';
+    ctx.beginPath();
+    ctx.arc(fx, fy, 1 + Math.random() * 2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  raf = requestAnimationFrame(loop);
+}
+
+sz();
+window.addEventListener('resize', () => { sz(); resetCanvas(); });
+resetCanvas();
+loop();
+</script>
+</body>
+</html>
